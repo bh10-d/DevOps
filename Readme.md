@@ -1,27 +1,28 @@
-DevOps Knowledge Repository
+# DevOps Knowledge Repository
 
 Welcome to my DevOps Knowledge Repository! This GitHub repository serves as a collection of the work and resources I have compiled over time. It organizes the tools, scripts, and projects I’ve worked on, making it easier to reference and reuse in the future.
 
 Repository Structure
 
-E:.
-├───docker
-├───iac
-│   ├───anisible
-│   └───terraform
-├───javascript - typescript
-│   ├───angular
-│   ├───next
-│   ├───react
-│   └───vue
-├───php
-│   ├───laravel
-│   └───pimcore
-└───shell
-    ├───backup-shell
-    └───install
+<pre>
+    ├───docker
+    ├───iac
+    │   ├───anisible
+    │   └───terraform
+    ├───javascript - typescript
+    │   ├───angular
+    │   ├───next
+    │   ├───react
+    │   └───vue
+    ├───php
+    │   ├───laravel
+    │   └───pimcore
+    └───shell
+        ├───backup-shell
+        └───install
+</pre> 
 
-Contents
+# Contents
 
 Docker
 

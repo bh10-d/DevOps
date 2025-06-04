@@ -6,11 +6,10 @@ BACKUP_DIR="/home/pm3/cdpd/backup/new/backup"
 RESTORE_DIR="/home/pm3/cdpd/backup/new/restore"
 TMP_DIR="$BACKUP_DIR/tmp"
 RETENTION_DAYS=7
-FULL_BACKUP_DAY=11    # Thử nghiệm tạo backup đầy đủ mỗi ngày
 LOG_FILE="$BACKUP_DIR/incremental_backup.log"
 
 # Lấy ngày và giờ hiện tại
-CURRENT_DATE=$(date +"%Y-%m-%d_%H-%M")
+CURRENT_DATE=$(date +"%Y-%m-%d")
 BACKUP_SUBDIR="$BACKUP_DIR/backup_$CURRENT_DATE"  # Thư mục riêng cho backup
 SNAPSHOT_FILE="$BACKUP_SUBDIR/snapshot.snar"
 INCR_BACKUP_FILE="$BACKUP_SUBDIR/incr_backup.tar.gz"
@@ -20,7 +19,14 @@ log() {
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] $1" | tee -a "$LOG_FILE"
 }
 
-# giữ lại
+# Đo thời gian chạy
+time_elapsed() {
+    local start_time=$1
+    local end_time=$(date +%s)
+    local elapsed=$((end_time - start_time))
+    echo "$elapsed"
+}
+
 # Kiểm tra dung lượng đĩa
 check_disk_space() {
     local required_space=$(du -s "$SRC_DIR" | awk '{print $1}') # Kích thước tính bằng KB (blocks 1K)
@@ -34,7 +40,6 @@ check_disk_space() {
     fi
 }
 
-# giữ lại
 # Đồng bộ dữ liệu vào thư mục tạm
 sync_to_tmp() {
     log "Syncing data to temporary directory: $TMP_DIR"
@@ -48,7 +53,6 @@ sync_to_tmp() {
 }
 
 # tạo full backup
-
 full_backup() {
     tar -czf "$BACKUP_DIR/full_backup_$CURRENT_DATE.tar.gz" -C $1 . || {
         log "Error: Initial full backup failed."
@@ -59,7 +63,6 @@ full_backup() {
 # tạo incre backup
 incremental_backup() {
     log "Performing incremental backup..."
-    # echo "$(find "$TMP_DIR" -type f | wc -l)"
     tar --listed-incremental="$BACKUP_DIR/snapshot.snar" -czf "$BACKUP_DIR/incr_backup_$CURRENT_DATE.tar.gz" -C "$TMP_DIR" . || {
         log "Error: Incremental backup failed."
         exit 1
@@ -87,65 +90,55 @@ restore_backup() {
     done
 }
 
+# Áp dụng chính sách lưu trữ
+remove_all_incr_backup() {
+    log "Deleting old incremental backups..."
+    # xoá các bản full backup cũ và chỉ để bản fullbackup mới nhất
+    ls $BACKUP_DIR/full_backup_*.tar.gz 2>/dev/null | sort | head -n -1 | xargs -r rm -f
+
+    # xoá các bản incremental sau khi đã restore và tạo bản full backup mới
+    ls $BACKUP_DIR/incr_backup_*.tar.gz 2>/dev/null | xargs -r rm -f
+    log "Old incremental backups removed successfully: $BACKUP_DIR"
+}
+
 # Thực hiện backup
 perform_backup() {
-    # echo $(find $BACKUP_DIR -type f -name "incr_backup_*.tar.gz")
-    # mkdir -p "$BACKUP_SUBDIR"  # Tạo thư mục cho backup
-
     # Kiểm tra xem đã có full backup nào chưa
-    if [ ! -f "$(ls ./backup/full_backup_*.tar.gz 2>/dev/null | head -n 1)" ]; then
+    if [ ! -f "$(ls $BACKUP_DIR/full_backup_*.tar.gz 2>/dev/null | head -n 1)" ]; then
         log "No full backup found. Creating the first full backup..."
-        # tar -czf "./backup/full_backup_$CURRENT_DATE.tar.gz" -C "$TMP_DIR" . || {
-        #     log "Error: Initial full backup failed."
-        #     exit 1
-        # }
         full_backup $TMP_DIR
         return 0
     fi
 
-    if [ $(( $((10#$(date +"%H"))) % $FULL_BACKUP_DAY )) -eq 0 ] && \
-    [ $(find $BACKUP_DIR -type f -name "incr_backup_*.tar.gz" | wc -l) -ge $RETENTION_DAYS ]; then
-        # check full backup co ton tai khong
-        # if [ -e "./backup/full_backup.gz" ]; then
-        #     log "Full backup..."
-        #     full_backup $TMP_DIR
-        # else
+    if [ $(find $BACKUP_DIR -type f -name "incr_backup_*.tar.gz" | wc -l) -eq $RETENTION_DAYS ] || [ $(find $BACKUP_DIR -type f -name "incr_backup_*.tar.gz" | wc -l) -ge    $RETENTION_DAYS ]; then
         restore_backup
-
         full_backup $RESTORE_DIR
 
         # Xóa snapshot cũ
         log "Deleting old snapshot..."
-        rm -f "./backup/snapshot.snar" || {
+        rm -f "$BACKUP_DIR/snapshot.snar" || {
             log "Error: Failed to delete old snapshot."
             exit 1
         }
+        log "Old snapshot removed successfully"
+
+
+        # Xoá các bản incremental cũ
+        remove_all_incr_backup
 
         incremental_backup
-        # fi
-
     else
         incremental_backup
     fi
 }
 
-
-# Áp dụng chính sách lưu trữ
-apply_retention_policy() {
-    log "Applying retention policy. Rotation backup: $RETENTION_DAYS"
-    # xoá các bản full backup cũ và chỉ để bản fullbackup mới nhất
-    ls ./backup/full_backup_*.tar.gz 2>/dev/null | sort | head -n -1 | xargs -r rm -f
-
-    # xoá các bản incremental có thời gian là 7 ngày về trước
-    find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type f -mtime +$RETENTION_DAYS -exec rm -rf {} \;
-    log "Old backups removed successfully: $BACKUP_DIR"
-}
-
 # Main Logic
 log "Backup process started."
+start_time=$(date +%s)
 check_disk_space
 sync_to_tmp
 perform_backup
-apply_retention_policy
-log "Backup process completed successfully."
+end_time=$(date +%s) # Lấy thời gian kết thúc
+elapsed=$((end_time - start_time)) # Tính thời gian chạy
+log "Backup process completed successfully in ${elapsed}s."
 echo "=====================================================" >> $LOG_FILE
