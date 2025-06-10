@@ -1,0 +1,20 @@
+# Dockerfile for Runner
+FROM ubuntu:20.04
+
+# Cài đặt SSH server
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    curl \
+    && mkdir -p /var/run/sshd 
+
+# Tạo user và SSH key
+RUN useradd -m runner && echo "runner:runner" | chpasswd && mkdir -p /home/runner/.ssh
+COPY id_rsa.pub /home/runner/.ssh/authorized_keys
+RUN chown -R runner:runner /home/runner/.ssh && chmod 700 /home/runner/.ssh && chmod 600 /home/runner/.ssh/authorized_keys
+
+# Mở cổng SSH
+EXPOSE 22
+
+# Khởi chạy SSH server
+CMD ["/usr/sbin/sshd", "-D"]
+

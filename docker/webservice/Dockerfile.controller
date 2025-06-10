@@ -1,0 +1,20 @@
+FROM python:3.9-slim
+
+# Cài đặt Flask và Paramiko
+WORKDIR /app
+COPY id_rsa /app
+RUN pip install flask paramiko
+
+
+# Copy SSH private key vào container
+COPY id_rsa /root/.ssh/id_rsa
+
+# Đặt quyền truy cập cho private key
+RUN chmod 600 /root/.ssh/id_rsa
+
+
+# Expose port 5000 for Flask app
+EXPOSE 5000
+
+# Khởi chạy Flask
+CMD ["python", "controller.py"]

@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  controller:
+    image: controller
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./id_rsa:/root/.ssh/id_rsa
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      - ./controller.py:/app/controller.py
+    command: ["python", "/app/controller.py"]
+    depends_on:
+      - runner1
+      - runner2
+
+  runner1:
+    image: runner
+    ports:
+      - "2222:22"
+
+  runner2:
+    image: runner
+    ports:
+      - "2223:22"
+
