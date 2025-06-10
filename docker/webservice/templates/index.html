@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runner Management</title>
+</head>
+
+<body>
+    <h1>Runner Management</h1>
+
+    <h2>Add Runner</h2>
+    <form method="POST" action="/add-runner">
+        <input type="text" name="runner_ip" placeholder="Runner IP" required>
+        <button type="submit">Add</button>
+    </form>
+
+    <h2>Available Runners</h2>
+    <form method="POST" action="/run-job" style="margin-top: 20px;">
+        <!-- Danh sách runner -->
+        {% for runner in runners %}
+        <div style="margin-bottom: 10px;">
+            <!-- Input checkbox -->
+            <label>
+                <input type="checkbox" name="runner_ips" value="{{ runner }}"> {{ runner }}
+            </label>
+            <!-- Nút Remove -->
+            <button type="submit" formaction="/remove-runner" formmethod="POST" name="runner_ip" value="{{ runner }}">Remove</button>
+            <!-- Nút Check Status -->
+            <button type="submit" formaction="/check-status" formmethod="POST" name="runner_ip" value="{{ runner }}">Check Status</button>
+        </div>
+        {% endfor %}
+        
+        <!-- Command input -->
+        <label for="command">Command:</label>
+        <input type="text" id="command" name="command" placeholder="Enter command" required>
+        <button type="submit">Run Command</button>
+    </form>
+
+    <h2>Logs</h2>
+    {% for runner, log in logs.items() %}
+    <h3>{{ runner }}</h3>
+    <pre>{{ log }}</pre>
+    {% endfor %}
+</body>
+
+</html>
